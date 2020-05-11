@@ -1,2 +1,2 @@
 # ComSoc
-Code for Computational Social Choice porject 2020
+Code for Computational Social Choice project 2020
