@@ -79,39 +79,47 @@ def make_voter_util(base_util, epsilon, n):
     return utils
 
 def calculate_sw(utils, winners):
+    """
+    Calculate the utilitarian social welfare, averaged over
+    the amount of voters.
+    """
     sw = utils[:, list(winners)]
     sw = np.sum(sw, axis=1)
     sw = np.mean(sw)
     return sw
 
-# parameters
-P = 10
-epsilon = 1
-N = 500
-k = 3
-budget = 30
 
-# initialize vectors
-base_util = make_base_util(P)
-print(f"base_util: {base_util}")
 
-project_prizes = make_projects(budget, P)
-print(f"project_prizes: {project_prizes}")
 
-# create utilities for voters
-utilities = make_voter_util(base_util, epsilon, N)
+if __name__ == "__main__":
+    # parameters
+    P = 10
+    epsilon = 1
+    N = 500
+    k = 3
+    budget = 30
 
-for k in range(1, P):
-    print(f"k: {k}")
+    # initialize vectors
+    base_util = make_base_util(P)
+    print(f"base_util: {base_util}")
 
-    # calculate scores for all projects
-    votes = k_approval(k, utilities)
-    # print(f"votes: {votes}")
+    project_prizes = make_projects(budget, P)
+    print(f"project_prizes: {project_prizes}")
 
-    # determine the winning projects
-    winners = greedy_allocation(votes, project_prizes, budget)
-    # print(f"winners: {winners}")
+    # create utilities for voters
+    utilities = make_voter_util(base_util, epsilon, N)
 
-    # calculate loss
-    sw = calculate_sw(utilities, winners)
-    print(f"Avg social welfare: {sw}\n")
+    for k in range(1, P):
+        print(f"k: {k}")
+
+        # calculate scores for all projects
+        votes = k_approval(k, utilities)
+        # print(f"votes: {votes}")
+
+        # determine the winning projects
+        winners = greedy_allocation(votes, project_prizes, budget)
+        # print(f"winners: {winners}")
+
+        # calculate loss
+        sw = calculate_sw(utilities, winners)
+        print(f"Avg social welfare: {sw}\n")
