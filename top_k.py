@@ -1,6 +1,69 @@
 import numpy as np 
 from collections import Counter
 
+##################################################################
+##### functions to get the set of possible winning sets
+##################################################################
+
+def get_possible_sets(prizes, b):
+    res = []
+    
+    get_possible_sets_helper(prizes, b, res)
+    
+    return remove_duplicates(res)
+
+def get_possible_sets_helper(prizes, b, res, sub=[]):
+    full = True
+    for i in range(len(projects)):
+        if i in sub:
+            continue
+        
+        prize = prizes[i]
+        if prize <= b:
+            sub2 = copy.copy(sub)
+            sub2.append(i)
+            get_possible_sets_helper(prizes, b-prize, res, sub2)
+            full = False
+            
+    if full:
+        res.append(sub)
+
+def find_duplicates(res, a):
+    idx = []
+    for i in range(len(res)):
+        a_ = res[i]
+        if a == a_:
+            continue
+        
+        dupe = True
+        for p in a_:
+            if p not in a:
+                dupe = False
+        if dupe:
+            idx.append(i)
+            
+    return idx
+        
+        
+def remove_duplicates(res):
+    duplicates = []
+    new_res = []
+    for i in range(len(res)):
+        if i in duplicates:
+            continue
+        
+        a = res[i]
+        new_res.append(a)
+        
+        dupes = find_duplicates(res, a)
+        
+        duplicates += dupes
+        
+    return new_res
+
+##################################################################
+##### voting rule fucntions
+##################################################################
 
 def k_approval(k, utils):
     """
@@ -35,6 +98,20 @@ def greedy_allocation(votes, projects, budget):
 
     return allocation
 
+def calculate_sw(utils, winners):
+    """
+    Calculate the utilitarian social welfare, averaged over
+    the amount of voters.
+    """
+    sw = utils[:, list(winners)]
+    sw = np.sum(sw, axis=1)
+    sw = np.mean(sw)
+    return sw
+
+##################################################################
+##### simulation functions
+##################################################################
+
 def make_base_util(P):
     """
         Create a base utility vector
@@ -55,7 +132,7 @@ def make_projects(budget, size):
         projects[i] = np.random.randint(0, budget/2, 1)[0]
     return projects
 
-def make_voter_util(base_util, epsilon, n):
+def make_voter_utils(base_util, epsilon, n):
     """
     Create utility profiles for n voters. All profiles are based on a base
     utility profile adjusted with random noise. Final voting profiles are
@@ -78,18 +155,6 @@ def make_voter_util(base_util, epsilon, n):
     utils /= np.sum(utils, axis=1).reshape(-1,1)
     return utils
 
-def calculate_sw(utils, winners):
-    """
-    Calculate the utilitarian social welfare, averaged over
-    the amount of voters.
-    """
-    sw = utils[:, list(winners)]
-    sw = np.sum(sw, axis=1)
-    sw = np.mean(sw)
-    return sw
-
-
-
 
 if __name__ == "__main__":
     # parameters
@@ -107,7 +172,7 @@ if __name__ == "__main__":
     print(f"project_prizes: {project_prizes}")
 
     # create utilities for voters
-    utilities = make_voter_util(base_util, epsilon, N)
+    utilities = make_voter_utils(base_util, epsilon, N)
 
     for k in range(1, P):
         print(f"k: {k}")
@@ -123,5 +188,3 @@ if __name__ == "__main__":
         # calculate loss
         sw = calculate_sw(utilities, winners)
         print(f"Avg social welfare: {sw}\n")
-
-print("test")
