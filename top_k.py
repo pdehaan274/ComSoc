@@ -123,3 +123,5 @@ if __name__ == "__main__":
         # calculate loss
         sw = calculate_sw(utilities, winners)
         print(f"Avg social welfare: {sw}\n")
+
+print("test")
