@@ -1,6 +1,39 @@
 import numpy as np 
 from collections import Counter
 
+
+#################################################################
+#### functions to use epistemic accuracy                     ####
+#################################################################
+
+def project_probs(P):
+    """
+    Set objective "true" values for each project. From these values
+    generate the probability with which a voter should vote for
+    a project.
+    """
+    values = np.random.normal(1, 0.5, P)
+    values[values<0] = 0
+    project_probs = values / np.sum(values)
+    return project_values, project_probs
+
+
+def best_outcome(values, possible_sets):
+    """
+    Calculate the best outcomes given that all projects have a true
+    utility value.
+    """
+    max_outcome = 0
+    best_sets = []
+    for project_set in possible_sets:
+        vals = values[project_set]
+        outcome = np.sum(vals)
+        if outcome == best_outcome:
+            best_sets.append(projects_set)
+        elif outcome > best_outcome:
+            best_sets = [project_set]
+    return best_sets
+
 ##################################################################
 ##### functions to get the set of possible winning sets
 ##################################################################
@@ -62,7 +95,7 @@ def remove_duplicates(res):
     return new_res
 
 ##################################################################
-##### voting rule fucntions
+##### voting rule functions
 ##################################################################
 
 def k_approval(k, utils):
@@ -98,15 +131,26 @@ def greedy_allocation(votes, projects, budget):
 
     return allocation
 
-def calculate_sw(utils, winners):
+def calculate_sw(utils, winners, egal=False, nash=True):
     """
     Calculate the utilitarian social welfare, averaged over
     the amount of voters.
     """
+    N = utils.shape[0]
     sw = utils[:, list(winners)]
     sw = np.sum(sw, axis=1)
-    sw = np.mean(sw)
+    if egal:
+        sw = np.min(sw)
+    #TODO: log of nie
+    elif nash:
+        # sw = np.sum(np.log(sw))
+        sw = np.prod(sw)
+        sw *= (1/N)
+    else:
+        sw = np.mean(sw)
     return sw
+
+
 
 ##################################################################
 ##### simulation functions
@@ -160,7 +204,7 @@ if __name__ == "__main__":
     # parameters
     P = 10
     epsilon = 1
-    N = 500
+    N = 20
     k = 3
     budget = 30
 
@@ -188,3 +232,5 @@ if __name__ == "__main__":
         # calculate loss
         sw = calculate_sw(utilities, winners)
         print(f"Avg social welfare: {sw}\n")
+
+    project_probs(P)
