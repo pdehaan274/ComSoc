@@ -104,7 +104,13 @@ def k_approval(k, utils):
     all voters.
     """
     votes = np.argsort(utils, axis=1)[:, :k]
-    return Counter(votes.reshape(-1))
+
+    res = Counter(votes.reshape(-1))
+    for i in range(votes.shape[0]):
+        if i not in res:
+            res[i] = 0
+
+    return res
 
 
 def greedy_allocation(votes, projects, budget):
