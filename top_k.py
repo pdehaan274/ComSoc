@@ -206,7 +206,7 @@ def max_utility(possible_sets, utilities):
     return np.array(possible_sets[np.argmax(scores, axis=1)])
 
 
-def calculate_sw(utils, winners, egal=False, nash=True):
+def calculate_sw(utils, winners, egal=False, nash=False):
     """
     Calculate the utilitarian social welfare, averaged over
     the amount of voters.
@@ -218,8 +218,8 @@ def calculate_sw(utils, winners, egal=False, nash=True):
         sw = np.min(sw)
     #TODO: log of nie
     elif nash:
-        # sw = np.sum(np.log(sw))
-        sw = np.prod(sw)
+        sw = np.sum(np.log(sw))
+        # sw = np.prod(sw)
         sw *= (1/N)
     else:
         sw = np.mean(sw)
@@ -239,64 +239,85 @@ def p_in_max(p, max_utility):
 def calc_compare_score(winners, max_utility, prizes):
     res = np.zeros((max_utility.shape[0]))
 
-    # print(f"max: {max_utility}")
     for p in winners:
-        # print(f"p: {p}")
         s = p_in_max(p, max_utility)
-
-        # print(f"s: {s}")
 
         prize = prizes[p]
         res += s*prize
 
     return np.mean(res)
 
-if __name__ == "__main__":
-    # parameters
-    P = 10
-    epsilon = 20
-    N = 20
-    k = 3
-    budget = 30
+def main(wf, P = 10, epsilon = 20, N = 20, budget = 30, 
+                        min_prize = 10, max_prize = 25):
 
-    min_prize = 10
-    max_prize = 25
 
-    # initialize vectors
-    base_util = make_base_util(P)
-    print(f"base_util: {base_util}")
+    wf.write(f"{P},{epsilon},{N},{budget},{min_prize},{max_prize},")
 
+    # create the prizes for each project and determine all possible winners
     project_prizes = make_projects(min_prize, max_prize, P)
-    print(f"project_prizes: {project_prizes}")
-
     possible_sets = get_possible_sets(project_prizes, budget)
-    # values, probs = project_probs(P)
 
-    # print(f"there are {len(possible_sets)} possible winners")
-
-    # best_sets = best_outcome(values, possible_sets)
-    # print(f"best sets: {best_sets}")
+    for i in range(P):
+        wf.write(f"{project_prizes[i]},")
 
     # create utilities for voters
+    base_util = make_base_util(P)
     utilities = make_voter_utils(base_util, epsilon, N)
 
-    max_utility = max_utility(possible_sets, utilities)
-    # print(f"max_utility results: {max_utility}")
+    for i in range(P-1):
+        wf.write(f"{base_util[i]},")
+
+    wf.write(f"{base_util[P-1]}")
+    # determine the best winning set for all voters
+    max_set = max_utility(possible_sets, utilities)
 
     for k in range(1, P):
 
         # calculate scores for all projects
         votes = k_approval(k, utilities, P)
-        # print(f"votes: {votes}")
 
         # determine the winning projects
         winners = greedy_allocation(votes, project_prizes, budget)
-        # print(f"winners: {winners}")
 
         # calculate loss
-        sw = calculate_sw(utilities, winners)
+        util_score = calculate_sw(utilities, winners)
+        egal_score = calculate_sw(utilities, winners, egal=True)
+        # nash_score = calculate_sw(utilities, winners, nash=True)
+        nash_score = 0
 
-        compare_score = calc_compare_score(winners, max_utility, project_prizes)
-        print(f"k: {k} -- Winners: {winners}, Avg comp: {compare_score}, Avg sw: {sw}\n")
+        comp_score = calc_compare_score(winners, max_set, project_prizes)
+        
+        wf.write(f",{util_score},{egal_score},{nash_score},{comp_score}")
 
+    wf.write("\n")
     # project_probs(P)
+
+
+if __name__ == "__main__":
+
+    wf = open("results.csv", "w")
+
+    wf.write(f"P,epsilon,N,budget,min_prize,max_prize,")
+
+    P = 10
+    for i in range(P):
+        wf.write(f"p_{i},")
+
+    for i in range(P):
+        wf.write(f"u_{i},")
+
+    for i in range(1, P-1):
+        wf.write(f"k_{i}_util,")
+        wf.write(f"k_{i}_egal,")
+        wf.write(f"k_{i}_nash,")
+        wf.write(f"k_{i}_comp,")    
+
+    wf.write(f"k_{P-1}_util,")
+    wf.write(f"k_{P-1}_egal,")
+    wf.write(f"k_{P-1}_nash,")
+    wf.write(f"k_{P-1}_comp\n")   
+
+    for _ in range(10000):
+        main(wf, P=P)
+
+    wf.close()
