@@ -17,7 +17,7 @@ def project_probs(P):
     values = np.random.normal(1, 0.5, P)
     values[values<0] = 0
     project_probs = values / np.sum(values)
-    return project_values, project_probs
+    return values, project_probs
 
 
 def best_outcome(values, possible_sets):
@@ -30,9 +30,9 @@ def best_outcome(values, possible_sets):
     for project_set in possible_sets:
         vals = values[project_set]
         outcome = np.sum(vals)
-        if outcome == best_outcome:
+        if outcome == max_outcome:
             best_sets.append(projects_set)
-        elif outcome > best_outcome:
+        elif outcome > max_outcome:
             best_sets = [project_set]
     return best_sets
 
@@ -224,7 +224,9 @@ if __name__ == "__main__":
     print(f"project_prizes: {project_prizes}")
 
     possible_sets = get_possible_sets(project_prizes, budget)
-    print("TEST", possible_sets)
+    values, probs = project_probs(P)
+    best_sets = best_outcome(values, possible_sets)
+    print(best_sets)
 
     # create utilities for voters
     utilities = make_voter_utils(base_util, epsilon, N)
