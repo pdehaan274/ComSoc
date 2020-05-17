@@ -31,7 +31,7 @@ def best_outcome(values, possible_sets):
         vals = values[project_set]
         outcome = np.sum(vals)
         if outcome == max_outcome:
-            best_sets.append(projects_set)
+            best_sets.append(project_set)
         elif outcome > max_outcome:
             best_sets = [project_set]
     return best_sets
@@ -45,7 +45,9 @@ def get_possible_sets(prizes, b):
     
     get_possible_sets_helper(prizes, b, res)
     
-    return remove_duplicates(res)
+    res = remove_duplicates(res)
+
+    return np.array(res)
 
 def get_possible_sets_helper(prizes, b, res, sub=[]):
     full = True
@@ -100,7 +102,7 @@ def remove_duplicates(res):
 ##### voting rule functions
 ##################################################################
 
-def k_approval(k, utils):
+def k_approval(k, utils, P):
     """
     Extract the k alternatives with the highest utility for
     all voters.
@@ -108,7 +110,7 @@ def k_approval(k, utils):
     votes = np.argsort(utils, axis=1)[:, :k]
 
     res = Counter(votes.reshape(-1))
-    for i in range(votes.shape[0]):
+    for i in range(P):
         if i not in res:
             res[i] = 0
 
@@ -139,26 +141,6 @@ def greedy_allocation(votes, projects, budget):
 
     return allocation
 
-def calculate_sw(utils, winners, egal=False, nash=True):
-    """
-    Calculate the utilitarian social welfare, averaged over
-    the amount of voters.
-    """
-    N = utils.shape[0]
-    sw = utils[:, list(winners)]
-    sw = np.sum(sw, axis=1)
-    if egal:
-        sw = np.min(sw)
-    #TODO: log of nie
-    elif nash:
-        # sw = np.sum(np.log(sw))
-        sw = np.prod(sw)
-        sw *= (1/N)
-    else:
-        sw = np.mean(sw)
-    return sw
-
-
 
 ##################################################################
 ##### simulation functions
@@ -172,16 +154,16 @@ def make_base_util(P):
     #TODO: expand on this
     return np.random.randint(0, 10, P)
 
-def make_projects(budget, size):
+def make_projects(min_prize, max_prize, size):
     """
     Create a dictionary with all projects and corresponding prices.
     """
     projects = {}
     #TODO: What would be a good price initialization for the projects?
     for i in range(size):
-        price = 1
+        # price = 1
         # projects[i] = price
-        projects[i] = np.random.randint(0, budget/2, 1)[0]
+        projects[i] = np.random.randint(min_prize, max_prize, 1)[0]
     return projects
 
 def make_voter_utils(base_util, epsilon, n):
@@ -207,35 +189,104 @@ def make_voter_utils(base_util, epsilon, n):
     utils /= np.sum(utils, axis=1).reshape(-1,1)
     return utils
 
+##################################################################
+##### Calculate utilities
+##################################################################
+
+def max_utility(possible_sets, utilities):
+    """
+        Calculates the best possible result for every voter based on their utilities
+    """
+    scores = np.zeros((utilities.shape[0], possible_sets.shape[0]))
+
+    for i in range(len(possible_sets)):
+        sub_utils = utilities[:, possible_sets[i]]
+        scores[:, i] = np.sum(sub_utils, axis=1)
+
+    return np.array(possible_sets[np.argmax(scores, axis=1)])
+
+
+def calculate_sw(utils, winners, egal=False, nash=True):
+    """
+    Calculate the utilitarian social welfare, averaged over
+    the amount of voters.
+    """
+    N = utils.shape[0]
+    sw = utils[:, list(winners)]
+    sw = np.sum(sw, axis=1)
+    if egal:
+        sw = np.min(sw)
+    #TODO: log of nie
+    elif nash:
+        # sw = np.sum(np.log(sw))
+        sw = np.prod(sw)
+        sw *= (1/N)
+    else:
+        sw = np.mean(sw)
+    return sw
+ 
+def p_in_max(p, max_utility):
+    """
+        Determines if a project is in the best results for the voters
+    """
+    res = np.zeros((max_utility.shape[0]))
+    for i in range(max_utility.shape[0]):
+        if p in max_utility[i]:
+            res[i] = 1
+
+    return res
+
+def calc_compare_score(winners, max_utility, prizes):
+    res = np.zeros((max_utility.shape[0]))
+
+    # print(f"max: {max_utility}")
+    for p in winners:
+        # print(f"p: {p}")
+        s = p_in_max(p, max_utility)
+
+        # print(f"s: {s}")
+
+        prize = prizes[p]
+        res += s*prize
+
+    return np.mean(res)
 
 if __name__ == "__main__":
     # parameters
     P = 10
-    epsilon = 1
+    epsilon = 20
     N = 20
     k = 3
     budget = 30
+
+    min_prize = 10
+    max_prize = 25
 
     # initialize vectors
     base_util = make_base_util(P)
     print(f"base_util: {base_util}")
 
-    project_prizes = make_projects(budget, P)
+    project_prizes = make_projects(min_prize, max_prize, P)
     print(f"project_prizes: {project_prizes}")
 
     possible_sets = get_possible_sets(project_prizes, budget)
-    values, probs = project_probs(P)
-    best_sets = best_outcome(values, possible_sets)
-    print(best_sets)
+    # values, probs = project_probs(P)
+
+    # print(f"there are {len(possible_sets)} possible winners")
+
+    # best_sets = best_outcome(values, possible_sets)
+    # print(f"best sets: {best_sets}")
 
     # create utilities for voters
     utilities = make_voter_utils(base_util, epsilon, N)
 
+    max_utility = max_utility(possible_sets, utilities)
+    # print(f"max_utility results: {max_utility}")
+
     for k in range(1, P):
-        print(f"k: {k}")
 
         # calculate scores for all projects
-        votes = k_approval(k, utilities)
+        votes = k_approval(k, utilities, P)
         # print(f"votes: {votes}")
 
         # determine the winning projects
@@ -244,6 +295,8 @@ if __name__ == "__main__":
 
         # calculate loss
         sw = calculate_sw(utilities, winners)
-        print(f"Avg social welfare: {sw}\n")
 
-    project_probs(P)
+        compare_score = calc_compare_score(winners, max_utility, project_prizes)
+        print(f"k: {k} -- Winners: {winners}, Avg comp: {compare_score}, Avg sw: {sw}\n")
+
+    # project_probs(P)
