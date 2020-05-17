@@ -1,5 +1,7 @@
+import copy
 import numpy as np 
 from collections import Counter
+
 
 
 #################################################################
@@ -47,7 +49,7 @@ def get_possible_sets(prizes, b):
 
 def get_possible_sets_helper(prizes, b, res, sub=[]):
     full = True
-    for i in range(len(projects)):
+    for i in range(len(prizes)):
         if i in sub:
             continue
         
@@ -220,6 +222,9 @@ if __name__ == "__main__":
 
     project_prizes = make_projects(budget, P)
     print(f"project_prizes: {project_prizes}")
+
+    possible_sets = get_possible_sets(project_prizes, budget)
+    print("TEST", possible_sets)
 
     # create utilities for voters
     utilities = make_voter_utils(base_util, epsilon, N)
