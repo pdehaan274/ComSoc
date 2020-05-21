@@ -2,7 +2,7 @@ import copy
 import numpy as np 
 from collections import Counter
 
-
+import argparse
 
 #################################################################
 #### functions to use epistemic accuracy                     ####
@@ -247,6 +247,23 @@ def calc_compare_score(winners, max_utility, prizes):
 
     return np.mean(res)
 
+def calc_dist_score(winners, max_utility, utilities):
+    res = np.zeros((max_utility.shape[0]))
+
+    for i in range(utilities.shape[0]):
+
+        current_score = np.sum(utilities[i, list(winners)])
+
+        if current_score == 0:
+            res[i] = 1000
+            continue
+        
+        max_score = np.sum(utilities[i, max_utility[i]])
+
+        res[i] = max_score/current_score
+
+    return np.mean(res)
+
 def main(wf, P = 10, epsilon = 20, N = 20, budget = 30, 
                         min_prize = 10, max_prize = 25):
 
@@ -286,38 +303,63 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
         nash_score = 0
 
         comp_score = calc_compare_score(winners, max_set, project_prizes)
+        dist_score = calc_dist_score(winners, max_set, utilities)
         
-        wf.write(f",{util_score},{egal_score},{nash_score},{comp_score}")
+        wf.write(f",{util_score},{egal_score},{nash_score},{comp_score},{dist_score}")
 
     wf.write("\n")
     # project_probs(P)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--loops', type=int, default=1000,
+                    help='an integer for the accumulator')
 
-    wf = open("results.csv", "w")
+    parser.add_argument('--P', type=int, default=10,
+                        help='an integer for the accumulator')
+    parser.add_argument('--epsilon', type=int, default=20,
+                    help='an integer for the accumulator')
+    parser.add_argument('--N', type=int, default=1000,
+                    help='an integer for the accumulator')
+    parser.add_argument('--budget', type=int, default=30,
+                        help='an integer for the accumulator')
+    parser.add_argument('--min', type=int, default=10,
+                        help='an integer for the accumulator')
+    parser.add_argument('--max', type=int, default=25,
+                        help='an integer for the accumulator')
+
+    args = parser.parse_args()
+
+    file_name = f"results_P{args.P}_ep{args.epsilon}_N{args.N}"
+    file_name += f"_B{args.budget}_min{args.min}_max{args.max}_L{args.loops}.csv"
+    
+    print(f"file name: {file_name}")
+    wf = open(f"results/{file_name}", "w")
 
     wf.write(f"P,epsilon,N,budget,min_prize,max_prize,")
 
-    P = 10
-    for i in range(P):
+    for i in range(args.P):
         wf.write(f"p_{i},")
 
-    for i in range(P):
+    for i in range(args.P):
         wf.write(f"u_{i},")
 
-    for i in range(1, P-1):
+    for i in range(1, args.P-1):
         wf.write(f"k_{i}_util,")
         wf.write(f"k_{i}_egal,")
         wf.write(f"k_{i}_nash,")
         wf.write(f"k_{i}_comp,")    
+        wf.write(f"k_{i}_dist,")    
 
-    wf.write(f"k_{P-1}_util,")
-    wf.write(f"k_{P-1}_egal,")
-    wf.write(f"k_{P-1}_nash,")
-    wf.write(f"k_{P-1}_comp\n")   
+    wf.write(f"k_{args.P-1}_util,")
+    wf.write(f"k_{args.P-1}_egal,")
+    wf.write(f"k_{args.P-1}_nash,")
+    wf.write(f"k_{args.P-1}_comp,")
+    wf.write(f"k_{args.P-1}_dist\n")   
 
-    for _ in range(10000):
-        main(wf, P=P)
+    for _ in range(args.loops):
+        main(wf, P = args.P, epsilon = args.epsilon, N = args.N, 
+             budget = args.budget, min_prize = args.min, max_prize = args.max)
 
     wf.close()
