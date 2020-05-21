@@ -1,6 +1,7 @@
 import copy
 import numpy as np 
 from collections import Counter
+from tqdm import tqdm
 
 import argparse
 
@@ -108,7 +109,6 @@ def k_approval(k, utils, P):
     all voters.
     """
     votes = np.argsort(utils, axis=1)[:, :k]
-
     res = Counter(votes.reshape(-1))
     for i in range(P):
         if i not in res:
@@ -236,11 +236,15 @@ def p_in_max(p, max_utility):
 
     return res
 
-def calc_compare_score(winners, max_utility, prizes):
-    res = np.zeros((max_utility.shape[0]))
+def calc_compare_score(winners, max_set, prizes):
+    """
+    Calculate what part of the budget is allocated to voters' favorite
+    projects.
+    """
+    res = np.zeros((max_set.shape[0]))
 
     for p in winners:
-        s = p_in_max(p, max_utility)
+        s = p_in_max(p, max_set)
 
         prize = prizes[p]
         res += s*prize
@@ -248,6 +252,9 @@ def calc_compare_score(winners, max_utility, prizes):
     return np.mean(res)
 
 def calc_dist_score(winners, max_utility, utilities):
+    """
+    Calculate the distortion.
+    """
     res = np.zeros((max_utility.shape[0]))
 
     for i in range(utilities.shape[0]):
@@ -271,14 +278,16 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
     wf.write(f"{P},{epsilon},{N},{budget},{min_prize},{max_prize},")
 
     # create the prizes for each project and determine all possible winners
-    project_prizes = make_projects(min_prize, max_prize, P)
+    # project_prizes = make_projects(min_prize, max_prize, P)
+    project_prizes= {0:10, 1:20, 2:3, 3:8, 4:5, 5:5, 6:10, 7:10, 8:30, 9:25}
     possible_sets = get_possible_sets(project_prizes, budget)
 
     for i in range(P):
         wf.write(f"{project_prizes[i]},")
 
     # create utilities for voters
-    base_util = make_base_util(P)
+    # base_util = make_base_util(P)
+    base_util = np.asarray([5.8, 2.3, 29.3, 9.5, 14.8, 9.4, 5.4, 14.9, 6.7, 1.9])
     utilities = make_voter_utils(base_util, epsilon, N)
 
     for i in range(P-1):
@@ -289,10 +298,9 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
     max_set = max_utility(possible_sets, utilities)
 
     for k in range(1, P):
-
         # calculate scores for all projects
         votes = k_approval(k, utilities, P)
-
+        
         # determine the winning projects
         winners = greedy_allocation(votes, project_prizes, budget)
 
@@ -305,7 +313,9 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
         comp_score = calc_compare_score(winners, max_set, project_prizes)
         dist_score = calc_dist_score(winners, max_set, utilities)
         
-        wf.write(f",{util_score},{egal_score},{nash_score},{comp_score},{dist_score}")
+        winners = ''.join(str(num) for num in list(winners))
+
+        wf.write(f",{str(winners)},{util_score},{egal_score},{nash_score},{comp_score},{dist_score}")
 
     wf.write("\n")
     # project_probs(P)
@@ -346,19 +356,21 @@ if __name__ == "__main__":
         wf.write(f"u_{i},")
 
     for i in range(1, args.P-1):
+        wf.write(f"k_{i}_winners,")
         wf.write(f"k_{i}_util,")
         wf.write(f"k_{i}_egal,")
         wf.write(f"k_{i}_nash,")
         wf.write(f"k_{i}_comp,")    
         wf.write(f"k_{i}_dist,")    
 
+    wf.write(f"k_{args.P-1}_winners,")
     wf.write(f"k_{args.P-1}_util,")
     wf.write(f"k_{args.P-1}_egal,")
     wf.write(f"k_{args.P-1}_nash,")
     wf.write(f"k_{args.P-1}_comp,")
     wf.write(f"k_{args.P-1}_dist\n")   
 
-    for _ in range(args.loops):
+    for _ in tqdm(range(args.loops)):
         main(wf, P = args.P, epsilon = args.epsilon, N = args.N, 
              budget = args.budget, min_prize = args.min, max_prize = args.max)
 
