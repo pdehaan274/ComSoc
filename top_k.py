@@ -38,7 +38,7 @@ def best_outcome(values, possible_sets):
             best_sets = [project_set]
     return best_sets
 
-def prob_utils(probs, k, N):
+def epistemic_topk(probs, k, N):
     """
     Generate votes given the epistemic probability of a voter
     voting for a project.
