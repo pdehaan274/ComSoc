@@ -224,7 +224,10 @@ def max_utility(possible_sets, utilities):
         sub_utils = utilities[:, possible_sets[i]]
         scores[:, i] = np.sum(sub_utils, axis=1)
 
-    return np.array(possible_sets[np.argmax(scores, axis=1)])
+    best_personal_outcomes = np.array(possible_sets[np.argmax(scores, axis=1)])
+    best_total_utility = np.max(np.sum(scores, axis=0))
+
+    return best_personal_outcomes, best_total_utility
 
 
 def calculate_sw(utils, winners, egal=False, nash=False):
@@ -316,7 +319,7 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
 
     wf.write(f"{base_util[P-1]}")
     # determine the best winning set for all voters
-    max_set = max_utility(possible_sets, utilities)
+    max_set, max_total_utility = max_utility(possible_sets, utilities)
 
     for k in range(1, P):
         # calculate scores for all projects
@@ -332,7 +335,7 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
         nash_score = 0
 
         comp_score = calc_compare_score(winners, max_set, project_prizes)
-        dist_score = calc_dist_score(winners, max_set, utilities)
+        dist_score = max_total_utility / util_score
         
         winners = ''.join(str(num) for num in list(winners))
 
