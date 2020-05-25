@@ -374,7 +374,7 @@ if __name__ == "__main__":
     print(f"file name: {file_name}")
     wf = open(f"results/{file_name}", "w")
 
-    wf.write(f"P,epsilon,N,budget,min_prize,max_prize,g")
+    wf.write(f"P,epsilon,N,budget,min_prize,max_prize,g,")
 
     for i in range(args.P):
         wf.write(f"p_{i},")
