@@ -129,8 +129,8 @@ def k_approval(k, utils, P):
     Extract the k alternatives with the highest utility for
     all voters.
     """
-    votes = np.argsort(utils, axis=1)[:, :k]
-    res = Counter(votes.reshape(-1))
+    votes = np.argsort(utils, axis=1)[::-1]
+    res = Counter(votes[:, :k].reshape(-1))
     for i in range(P):
         if i not in res:
             res[i] = 0
