@@ -167,13 +167,17 @@ def greedy_allocation(votes, projects, budget):
 ##### simulation functions
 ##################################################################
 
-def make_base_util(P):
+def make_base_util(P, borda=False):
     """
         Create a base utility vector
     """
-    
+    if borda:
+        utils = np.arange(P)
+        np.random.shuffle(utils)
+        return utils
     #TODO: expand on this
-    return np.random.randint(0, 10, P)
+    else:
+        return np.random.randint(0, 10, P)
 
 def make_projects(min_prize, max_prize, size):
     """
