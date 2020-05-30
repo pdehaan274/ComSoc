@@ -177,10 +177,10 @@ def make_utils(P, epsilon, N, g=1):
 
     # Create different base utilities 
     base_util, vote_util = [], []
-    for i in range(g):
+    for _ in range(g):
         util = make_base_util(P)
         base_util.append(util)    
-        utilities = make_voter_utils(util, epsilon, int(N/5))
+        utilities = make_voter_utils(util, epsilon, int(N/g))
         vote_util.append(utilities)
 
     return np.vstack(vote_util)
@@ -215,7 +215,9 @@ def make_voter_utils(base_util, epsilon, n):
 
     utils = utils - u_min.reshape(-1, 1)
 
-    utils /= ampl.reshape(-1, 1)
+    utils /= ampl.reshape(-1, 1) 
+
+    utils += 0.1
 
     utils /= np.sum(utils, axis=1).reshape(-1,1)
     return utils
@@ -234,10 +236,19 @@ def max_utility(possible_sets, utilities):
         sub_utils = utilities[:, possible_sets[i]]
         scores[:, i] = np.sum(sub_utils, axis=1)
 
-    best_personal_outcomes = np.array(possible_sets[np.argmax(scores, axis=1)])
+    best_personal_outcomes = possible_sets[np.argmax(scores, axis=1)]
     best_total_utility = np.max(np.mean(scores, axis=0))
-
-    return best_personal_outcomes, best_total_utility
+    max_len = 0
+    for outcome in best_personal_outcomes:
+        if len(outcome) > max_len:
+            max_len = len(outcome)
+    res = []
+    for outcome in best_personal_outcomes:
+        while len(outcome) < max_len:
+            outcome.append(-1)
+        res.append(outcome)
+    res = np.array(res)
+    return res, best_total_utility
 
 
 def calculate_sw(utils, winners, egal=False, nash=False):
@@ -275,15 +286,15 @@ def calc_compare_score(winners, max_set, prizes):
     Calculate what part of the budget is allocated to voters' favorite
     projects.
     """
-    res = np.zeros((max_set.shape[0]))
+    res = 0
 
     for p in winners:
-        s = p_in_max(p, max_set)
+        s = len(np.where(max_set == p)[0])
 
         prize = prizes[p]
         res += s*prize
 
-    return np.mean(res)
+    return res / max_set.shape[0]
 
 def calc_dist_score(winners, max_utility, utilities):
     """
@@ -308,13 +319,18 @@ def calc_dist_score(winners, max_utility, utilities):
 def main(wf, P = 10, epsilon = 20, N = 20, budget = 30, 
                         min_prize = 10, max_prize = 25, g=1):
 
-
-    wf.write(f"{P},{epsilon},{N},{budget},{min_prize},{max_prize},{g},")
-
     # create the prizes for each project and determine all possible winners
     project_prizes = make_projects(min_prize, max_prize, P)
     # project_prizes= {0:10, 1:20, 2:3, 3:8, 4:5, 5:5, 6:10, 7:10, 8:30, 9:25}
-    possible_sets = get_possible_sets(project_prizes, budget)
+    # possible_sets = get_possible_sets(project_prizes, budget)
+    # total_len = 0
+    # for s in possible_sets:
+    #     total_len += len(s)
+
+    # avg_len = total_len / possible_sets.shape[0]
+    avg_len = 0
+
+    wf.write(f"{P},{epsilon},{N},{budget},{min_prize},{max_prize},{g},{avg_len},")
 
     for i in range(P-1):
         wf.write(f"{project_prizes[i]},")
@@ -324,7 +340,7 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
     utilities = make_utils(P, epsilon, N, g)
 
     # determine the best winning set for all voters
-    max_set, max_total_utility = max_utility(possible_sets, utilities)
+    # max_set, _ = max_utility(possible_sets, utilities)
 
     for k in range(1, P):
         # calculate scores for all projects
@@ -336,17 +352,14 @@ def main(wf, P = 10, epsilon = 20, N = 20, budget = 30,
         # calculate loss
         util_score = calculate_sw(utilities, winners)
         egal_score = calculate_sw(utilities, winners, egal=True)
-        # nash_score = calculate_sw(utilities, winners, nash=True)
-        nash_score = 0
+        nash_score = calculate_sw(utilities, winners, nash=True)
 
-        comp_score = calc_compare_score(winners, max_set, project_prizes)
-        # dist_score = 1 - util_score / max_total_utility
-        # comp_score = 0
-        dist_score = 0
+        # comp_score = calc_compare_score(winners, max_set, project_prizes)
+        comp_score = 0
         
         num_winners = len(winners)
         winners = ' '.join(str(num) for num in list(winners))
-        wf.write(f",{winners},{num_winners},{util_score},{egal_score},{nash_score},{comp_score},{dist_score}")
+        wf.write(f",{winners},{num_winners},{util_score},{egal_score},{nash_score},{comp_score}")
 
     wf.write("\n")
     # project_probs(P)
@@ -380,7 +393,7 @@ if __name__ == "__main__":
     print(f"file name: {file_name}")
     wf = open(f"results/{file_name}", "w")
 
-    wf.write(f"P,epsilon,N,budget,min_prize,max_prize,g,")
+    wf.write(f"P,epsilon,N,budget,min_prize,max_prize,g,avg_len,")
 
     for i in range(args.P):
         wf.write(f"p_{i},")
@@ -391,16 +404,14 @@ if __name__ == "__main__":
         wf.write(f"k_{i}_util,")
         wf.write(f"k_{i}_egal,")
         wf.write(f"k_{i}_nash,")
-        wf.write(f"k_{i}_comp,")    
-        wf.write(f"k_{i}_EL,")    
+        wf.write(f"k_{i}_comp,")     
 
     wf.write(f"k_{args.P-1}_winners,")
     wf.write(f"k_{args.P-1}_num_winners,")
     wf.write(f"k_{args.P-1}_util,")
     wf.write(f"k_{args.P-1}_egal,")
     wf.write(f"k_{args.P-1}_nash,")
-    wf.write(f"k_{args.P-1}_comp,")
-    wf.write(f"k_{args.P-1}_EL\n")   
+    wf.write(f"k_{args.P-1}_comp\n") 
 
     for _ in tqdm(range(args.loops)):
         main(wf, P = args.P, epsilon = args.epsilon, N = args.N, 
